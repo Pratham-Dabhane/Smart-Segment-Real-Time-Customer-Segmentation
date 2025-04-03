@@ -10,12 +10,14 @@ import dash_bootstrap_components as dbc
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 import calendar
+import random
+from datetime import datetime
 
 # Set display options for better visualization
 pd.set_option('display.float_format', lambda x: '%.2f' % x)
 
 # Set random seed for reproducibility
-np.random.seed(42)
+np.random.seed(datetime.now().microsecond)
 
 # Load the datasets
 flight_activity = pd.read_csv('dataset/Customer Flight Activity.csv')
@@ -110,6 +112,135 @@ def analyze_business_cases(fm, df):
     
     return fm
 
+# Dynamic Recommendation Generator
+def generate_dynamic_recommendations(cluster_stats, peak_season, peak_months):
+    # Base recommendation templates
+    base_recommendations = {
+        'Cluster 0': {
+            'title': 'High Frequency, Moderate Value Customers',
+            'base': [
+                "Implement dynamic pricing for frequent flyers",
+                "Offer volume discounts for multiple bookings",
+                "Create bundled packages with partner services",
+                "Develop corporate travel programs",
+                "Introduce family/group travel incentives"
+            ],
+            'seasonal': {
+                'Summer': ["Summer travel passes", "Early bird specials", "Family vacation bundles"],
+                'Winter': ["Holiday season packages", "Ski destination deals", "Winter getaway promotions"],
+                'Spring': ["Spring break offers", "Destination discovery deals", "Shoulder season discounts"],
+                'Fall': ["Fall foliage tours", "Post-summer discounts", "Cultural experience packages"]
+            },
+            'upsell': [
+                "Priority boarding upgrades",
+                "Extra baggage allowances",
+                "Lounge access passes",
+                "Premium meal options",
+                "Seat selection fees"
+            ]
+        },
+        'Cluster 1': {
+            'title': 'Low Frequency, Moderate Value Customers',
+            'base': [
+                "Create seasonal promotions",
+                "Offer limited-time discounts",
+                "Develop weekend getaway packages",
+                "Implement flexible booking options",
+                "Provide sign-up bonuses"
+            ],
+            'seasonal': {
+                'Summer': ["Summer vacation deals", "Beach destination packages", "Adventure travel offers"],
+                'Winter': ["Winter sun specials", "Festival travel packages", "New Year getaway deals"],
+                'Spring': ["Flower festival tours", "Spring city breaks", "Outdoor activity packages"],
+                'Fall': ["Fall color tours", "Wine country visits", "Cultural festival packages"]
+            },
+            'upsell': [
+                "Hotel bundle discounts",
+                "Car rental packages",
+                "Travel insurance offers",
+                "Airport transfer services",
+                "Local experience packages"
+            ]
+        },
+        'Cluster 2': {
+            'title': 'High Value Customers',
+            'base': [
+                "Offer premium seat upgrades",
+                "Provide personalized concierge services",
+                "Create VIP event packages",
+                "Develop exclusive destination partnerships",
+                "Assign dedicated account managers"
+            ],
+            'seasonal': {
+                'Summer': ["Luxury summer retreats", "Private island getaways", "Yacht charter packages"],
+                'Winter': ["Alpine luxury experiences", "Private jet ski trips", "Designer shopping tours"],
+                'Spring': ["Gourmet food tours", "Private vineyard visits", "Art and culture experiences"],
+                'Fall': ["Luxury train journeys", "Five-star safari packages", "Private cultural tours"]
+            },
+            'upsell': [
+                "First class upgrades",
+                "Executive lounge memberships",
+                "Chauffeur services",
+                "Five-star hotel partnerships",
+                "Exclusive event access"
+            ]
+        },
+        'Cluster 3': {
+            'title': 'Medium-High Frequency, High Value Customers',
+            'base': [
+                "Implement dynamic loyalty rewards",
+                "Create business travel packages",
+                "Offer premium tier benefits",
+                "Develop destination-specific programs",
+                "Provide flexible corporate solutions"
+            ],
+            'seasonal': {
+                'Summer': ["Business summer deals", "Conference travel packages", "Networking event bundles"],
+                'Winter': ["Year-end business retreats", "Corporate holiday packages", "Executive winter getaways"],
+                'Spring': ["Industry summit packages", "Business class spring deals", "Corporate training retreats"],
+                'Fall': ["Fall business conferences", "Executive leadership retreats", "Corporate strategy offsites"]
+            },
+            'upsell': [
+                "Business class upgrades",
+                "Airport fast-track services",
+                "Premium workspace access",
+                "Dedicated check-in services",
+                "Corporate travel management"
+            ]
+        }
+    }
+
+    recommendations = {}
+    for cluster in base_recommendations:
+        # Randomly select 3-4 base recommendations
+        base_recs = random.sample(base_recommendations[cluster]['base'], k=random.randint(3,4))
+        
+        # Get 1-2 seasonal recommendations
+        seasonal_recs = random.sample(base_recommendations[cluster]['seasonal'][peak_season], k=random.randint(1,2))
+        
+        # Get 2-3 upsell opportunities
+        upsell_ops = random.sample(base_recommendations[cluster]['upsell'], k=random.randint(2,3))
+        
+        # Determine price sensitivity dynamically
+        sensitivity_options = ['Low', 'Moderate', 'High']
+        weights = {
+            'Cluster 0': [0.1, 0.7, 0.2],
+            'Cluster 1': [0.05, 0.3, 0.65],
+            'Cluster 2': [0.7, 0.25, 0.05],
+            'Cluster 3': [0.4, 0.5, 0.1]
+        }
+        price_sensitivity = random.choices(sensitivity_options, weights=weights[cluster], k=1)[0]
+        
+        recommendations[cluster] = {
+            'title': base_recommendations[cluster]['title'],
+            'revenue_contribution': f"{cluster_stats.loc[int(cluster.split()[-1]), 'Revenue_Contribution']:.1f}%",
+            'recommendations': base_recs + seasonal_recs,
+            'price_sensitivity': price_sensitivity,
+            'upsell_opportunities': upsell_ops
+        }
+    
+    return recommendations
+
 # Custom Peach Skyline color palette
 peach_skyline_colors = [
     '#FFD3B6',  # Light peach
@@ -140,59 +271,10 @@ def create_dashboard(fm, df, seasonal_stats, peak_months, loyalty_tier_stats):
     total_customers = fm['Loyalty Number'].nunique()
     avg_ticket_price = fm['Avg_Ticket_Price'].mean()
     total_revenue = fm['Total_Revenue'].sum()
-    peak_season = seasonal_stats.nlargest(1, 'Total Flights')['Season'].iloc[0]
+    peak_season = seasonal_stats.iloc[seasonal_stats['Total Flights'].idxmax()]['Season']
     
-    # Strategic recommendations with new metrics
-    strategic_recommendations = {
-        'Cluster 0': {
-            'title': 'High Frequency, Moderate Value Customers',
-            'revenue_contribution': f"{cluster_stats.loc[0, 'Revenue_Contribution']:.1f}%",
-            'recommendations': [
-                'Implement tiered pricing based on booking frequency',
-                'Offer bulk booking discounts (5-10% for 3+ flights)',
-                'Introduce family travel packages using companion flight data',
-                'Corporate partnership programs targeting frequent flyers'
-            ],
-            'price_sensitivity': 'Moderate (responds to 5-10% discounts)',
-            'upsell_opportunities': ['Family packages', 'Group discounts', 'Seasonal passes']
-        },
-        'Cluster 1': {
-            'title': 'Low Frequency, Moderate Value Customers',
-            'revenue_contribution': f"{cluster_stats.loc[1, 'Revenue_Contribution']:.1f}%",
-            'recommendations': [
-                'Create seasonal travel promotions (20-30% off)',
-                'Weekend getaway packages with hotel partnerships',
-                'Flexible booking options with 10% premium',
-                'Loyalty program sign-up bonuses (500 bonus miles)'
-            ],
-            'price_sensitivity': 'High (needs 20-30% discounts)',
-            'upsell_opportunities': ['Hotel bundles', 'Car rentals', 'Travel insurance']
-        },
-        'Cluster 2': {
-            'title': 'High Value Customers',
-            'revenue_contribution': f"{cluster_stats.loc[2, 'Revenue_Contribution']:.1f}%",
-            'recommendations': [
-                'Premium seat upgrades based on CLV',
-                'Personalized travel concierge services',
-                'VIP event partnerships (sports, concerts)',
-                'Dedicated account managers for top customers'
-            ],
-            'price_sensitivity': 'Low (willing to pay 15-20% premium)',
-            'upsell_opportunities': ['First class upgrades', 'Lounge memberships', 'Priority services']
-        },
-        'Cluster 3': {
-            'title': 'Medium-High Frequency, High Value Customers',
-            'revenue_contribution': f"{cluster_stats.loc[3, 'Revenue_Contribution']:.1f}%",
-            'recommendations': [
-                'Dynamic pricing based on travel patterns',
-                'Premium loyalty tiers (Gold/Platinum)',
-                'Business travel packages using companion data',
-                'Exclusive destination partnerships'
-            ],
-            'price_sensitivity': 'Moderate-Low (responds to value-added services)',
-            'upsell_opportunities': ['Business class upgrades', 'Airport transfers', 'Premium meals']
-        }
-    }
+    # Generate initial dynamic recommendations
+    strategic_recommendations = generate_dynamic_recommendations(cluster_stats, peak_season, peak_months)
     
     # Custom CSS with Peach Skyline theme and serif fonts
     app.index_string = '''
@@ -297,11 +379,39 @@ def create_dashboard(fm, df, seasonal_stats, peak_months, loyalty_tier_stats):
                 .dropdown-item {
                     font-size: 18px;
                     color: #FFD3B6;
+                    background-color: #2c3e50;
                 }
                 .dropdown-item:hover {
                     font-size: 18px;
                     background-color: #6B5B95;
                     color: white;
+                }
+                .VirtualizedSelectOption {
+                    font-size: 18px;
+                    color: #FFD3B6 !important;
+                    background-color: #2c3e50 !important;
+                }
+                .VirtualizedSelectFocusedOption {
+                    background-color: #6B5B95 !important;
+                    color: white !important;
+                }
+                .Select-menu-outer {
+                    background-color: #2c3e50 !important;
+                    border: 1px solid #444 !important;
+                }
+                .Select-control {
+                    background-color: #2c3e50 !important;
+                    border: 1px solid #444 !important;
+                    color: #FFD3B6 !important;
+                }
+                .Select-value-label {
+                    color: #FFD3B6 !important;
+                }
+                .Select-input {
+                    color: #FFD3B6 !important;
+                }
+                .Select-arrow-zone {
+                    color: #FFD3B6 !important;
                 }
                 .list-group-item {
                     font-size: 18px;
@@ -321,6 +431,17 @@ def create_dashboard(fm, df, seasonal_stats, peak_months, loyalty_tier_stats):
                 .tab-content {
                     font-size: 18px;
                 }
+                .refresh-button {
+                    margin-left: 10px;
+                    background-color: #6B5B95;
+                    border-color: #6B5B95;
+                    color: white;
+                }
+                .refresh-button:hover {
+                    background-color: #7D6BA0;
+                    border-color: #7D6BA0;
+                    color: white;
+                }
             </style>
         </head>
         <body>
@@ -335,6 +456,8 @@ def create_dashboard(fm, df, seasonal_stats, peak_months, loyalty_tier_stats):
     '''
     
     app.layout = dbc.Container([
+        dcc.Store(id='recommendations-store', data=strategic_recommendations),
+        dcc.Store(id='seasonal-store', data=seasonal_stats.to_dict('records')),
         # Header
         dbc.Row([
             dbc.Col([
@@ -532,7 +655,7 @@ def create_dashboard(fm, df, seasonal_stats, peak_months, loyalty_tier_stats):
                             dbc.Card([
                                 dbc.CardBody([
                                     html.P(f'Peak Travel Months: {", ".join([calendar.month_name[m] for m in peak_months])}', className='mb-2'),
-                                    html.P(f'Highest Activity Season: {seasonal_stats.nlargest(1, "Total Flights")["Season"].iloc[0]}', className='mb-2'),
+                                    html.P(f'Highest Activity Season: {peak_season}', className='mb-2'),
                                     html.P(f'Total Revenue: ${seasonal_stats["Dollar Cost Points Redeemed"].sum():,.0f}')
                                 ])
                             ], className='mt-4')
@@ -569,15 +692,27 @@ def create_dashboard(fm, df, seasonal_stats, peak_months, loyalty_tier_stats):
                     dbc.Col([
                         html.Div([
                             html.H3('Select Customer Segment', className='mb-4'),
-                            dcc.Dropdown(
-                                id='segment-dropdown',
-                                options=[
-                                    {'label': f'Cluster {i} - {strategic_recommendations[f"Cluster {i}"]["title"]}',
-                                     'value': f'Cluster {i}'} for i in range(4)
-                                ],
-                                value='Cluster 0',
-                                className='mb-4'
-                            )
+                            dbc.Row([
+                                dbc.Col([
+                                    dcc.Dropdown(
+                                        id='segment-dropdown',
+                                        options=[
+                                            {'label': f'Cluster {i} - {strategic_recommendations[f"Cluster {i}"]["title"]}',
+                                            'value': f'Cluster {i}'} for i in range(4)
+                                        ],
+                                        value='Cluster 0',
+                                        className='mb-4',
+                                        style={
+                                            'color': '#FFD3B6',
+                                            'backgroundColor': '#2c3e50',
+                                            'border': '1px solid #444'
+                                        }
+                                    )
+                                ], width=10),
+                                dbc.Col([
+                                    dbc.Button("Refresh", id="refresh-button", color="primary", className="refresh-button")
+                                ], width=2)
+                            ])
                         ], className='graph-container')
                     ], width=12)
                 ]),
@@ -620,21 +755,38 @@ def create_dashboard(fm, df, seasonal_stats, peak_months, loyalty_tier_stats):
             ])
         ], className='mb-4')
     ], fluid=True)
-    
+
     # Callbacks for interactive elements
     @app.callback(
         [Output('segment-overview', 'children'),
          Output('recommendations-output', 'children'),
          Output('pricing-strategy', 'children'),
          Output('upsell-opportunities', 'children')],
-        Input('segment-dropdown', 'value')
+        [Input('segment-dropdown', 'value'),
+         Input('refresh-button', 'n_clicks')],
+        [State('recommendations-store', 'data'),
+         State('seasonal-store', 'data'),
+         State('segment-dropdown', 'value')]
     )
-    def update_recommendations(selected_segment):
+    def update_recommendations(selected_segment, n_clicks, recommendations_data, seasonal_data, current_segment):
+        # Convert seasonal data back to DataFrame
+        seasonal_stats = pd.DataFrame(seasonal_data)
+        
+        # Get peak season
+        peak_season = seasonal_stats.iloc[seasonal_stats['Total Flights'].idxmax()]['Season']
+        
+        # Regenerate recommendations when refresh button is clicked
+        ctx = dash.callback_context
+        if ctx.triggered and ctx.triggered[0]['prop_id'] == 'refresh-button.n_clicks':
+            strategic_recommendations = generate_dynamic_recommendations(cluster_stats, peak_season, peak_months)
+            selected_segment = current_segment  # Keep the same segment selected
+        else:
+            strategic_recommendations = recommendations_data
+        
         segment = strategic_recommendations[selected_segment]
         cluster_num = int(selected_segment.split()[-1])
         stats = cluster_stats[cluster_stats['Cluster'] == cluster_num].iloc[0]
         
-        peak_season = seasonal_stats.nlargest(1, 'Total Flights')['Season'].iloc[0]
         peak_months_str = ', '.join([calendar.month_name[m] for m in peak_months])
         
         overview = html.Div([
@@ -647,15 +799,9 @@ def create_dashboard(fm, df, seasonal_stats, peak_months, loyalty_tier_stats):
             html.P(f"Peak Travel Months: {peak_months_str}")
         ])
         
-        dynamic_recommendations = segment['recommendations'].copy()
-        if peak_season == 'Summer':
-            dynamic_recommendations.append(f"Special summer vacation packages targeting {segment['title']}")
-        elif peak_season == 'Winter':
-            dynamic_recommendations.append(f"Winter holiday promotions for {segment['title']}")
-        
         recommendations = html.Div([
             dbc.ListGroup([
-                dbc.ListGroupItem(rec, className='mb-2') for rec in dynamic_recommendations
+                dbc.ListGroupItem(rec, className='mb-2') for rec in segment['recommendations']
             ])
         ])
         
@@ -671,20 +817,14 @@ def create_dashboard(fm, df, seasonal_stats, peak_months, loyalty_tier_stats):
             ])
         ])
         
-        seasonal_upsell = segment['upsell_opportunities'].copy()
-        if peak_season in ['Summer', 'Spring']:
-            seasonal_upsell.append('Vacation packages')
-        elif peak_season in ['Fall', 'Winter']:
-            seasonal_upsell.append('Holiday travel bundles')
-        
         upsell = html.Div([
             html.P("Top Upsell Opportunities:", className='mb-2'),
-            html.Ul([html.Li(item, className='mb-2') for item in seasonal_upsell])
+            html.Ul([html.Li(item, className='mb-2') for item in segment['upsell_opportunities']])
         ])
         
         return overview, recommendations, pricing, upsell
     
-    app.run(debug=True)
+    return app
 
 if __name__ == "__main__":
     # Preprocess data with available columns
@@ -694,4 +834,5 @@ if __name__ == "__main__":
     fm = analyze_business_cases(fm, df)
     
     # Create enhanced dashboard
-    create_dashboard(fm, df, seasonal_stats, peak_months, loyalty_tier_stats)
+    app = create_dashboard(fm, df, seasonal_stats, peak_months, loyalty_tier_stats)
+    app.run(debug=True)
