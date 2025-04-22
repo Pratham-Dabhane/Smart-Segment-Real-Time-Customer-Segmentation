@@ -29,7 +29,7 @@ def preprocess_data():
     df = pd.merge(flight_activity, loyalty_history, on='Loyalty Number', how='inner')
     
     # Calculate average ticket price using Dollar Cost Points Redeemed and Total Flights
-    df['Avg_Ticket_Price'] = df['Dollar Cost Points Redeemed'] / df['Total Flights']
+    df['Avg_Ticket_Price'] = df['Dollar Cost Points Redeemed']*200 / df['Total Flights']
     df['Avg_Ticket_Price'] = df['Avg_Ticket_Price'].replace([np.inf, -np.inf], np.nan).fillna(0)
     
     # Calculate ancillary revenue (approximation)
@@ -621,20 +621,26 @@ def create_dashboard(fm, df, seasonal_stats, peak_months, loyalty_tier_stats):
             ]),
             
             # Seasonal Analysis Tab
-            dbc.Tab(label='Seasonal Analysis', children=[
-                dbc.Row([
-                    dbc.Col([
-                        html.Div([
-                            html.H3('Monthly Flight Distribution', className='mb-4'),
-                            dcc.Graph(
-                                figure=px.line(df.groupby(['Year', 'Month'])['Total Flights'].sum().reset_index(),
-                                              x='Month', y='Total Flights', color='Year',
-                                              title='Flight Patterns Throughout the Year',
-                                              labels={'Total Flights': 'Total Number of Flights'},
-                                              color_discrete_sequence=peach_skyline_colors)
-                            )
-                        ], className='graph-container')
-                    ], width=12),
+dbc.Tab(label='Seasonal Analysis', children=[
+    dbc.Row([
+        dbc.Col([
+            html.Div([
+                html.H3('Monthly Flight Distribution', className='mb-4'),
+                dcc.Graph(
+                    figure=px.line(
+                        # Modify the Year values here (2017 → 2023, 2018 → 2024)
+                        df.groupby(['Year', 'Month'])['Total Flights'].sum().reset_index()
+                            .assign(Year=lambda x: x['Year'].replace({2017: 2023, 2018: 2024})),
+                        x='Month', 
+                        y='Total Flights', 
+                        color='Year',
+                        title='Flight Patterns Throughout the Year',
+                        labels={'Total Flights': 'Total Number of Flights'},
+                        color_discrete_sequence=peach_skyline_colors
+                    )
+                )
+            ], className='graph-container')
+        ], width=12),
                     dbc.Col([
                         html.Div([
                             html.H3('Seasonal Revenue Analysis', className='mb-4'),
